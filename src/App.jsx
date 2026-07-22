@@ -218,11 +218,13 @@ export default function App() {
 
   function selectUser(user) {
     setCurrentUser(user);
+    sessionStorage.setItem('english_current_user', user.id);
     const saved = loadUserState(user.id) || getInitialState();
     setState(saved);
   }
 
   function logout() {
+    sessionStorage.removeItem('english_current_user');
     setCurrentUser(null);
     setState(null);
     setSentences({});
@@ -233,6 +235,19 @@ export default function App() {
   useEffect(() => {
     if (currentUser && state) saveUserState(currentUser.id, state);
   }, [state, currentUser]);
+
+  // Auto-restore session on page refresh
+  useEffect(() => {
+    const savedUserId = sessionStorage.getItem('english_current_user');
+    if (savedUserId && !currentUser) {
+      const user = USERS.find(u => u.id === savedUserId);
+      if (user) {
+        setCurrentUser(user);
+        const saved = loadUserState(user.id) || getInitialState();
+        setState(saved);
+      }
+    }
+  }, []);
 
   if (!currentUser) {
     return (
@@ -267,15 +282,15 @@ export default function App() {
   const daysLeft = Math.max(0, Math.ceil((state.weekStartedAt + 7*24*60*60*1000 - Date.now()) / (24*60*60*1000)));
 
   async function checkSentences() {
-    const missing = weekWords.filter(w => !(sentences[w.en] || "").trim());
-    if (missing.length > 0) { alert(`Напиши предложение для каждого слова! Осталось: ${missing.length}`); return; }
+    const filled = weekWords.filter(w => (sentences[w.en] || "").trim());
+    if (filled.length === 0) { alert("Напиши хотя бы одно предложение!"); return; }
     setLoading(true); setFeedback(null);
-    const wordList = weekWords.map(w => `"${w.en}" (${w.ru}): "${sentences[w.en]}"`).join("\n");
+    const wordList = filled.map(w => `"${w.en}" (${w.ru}): "${sentences[w.en]}"`).join("\n");
     const prompt = `You are a friendly English teacher for a B1-B2 Russian speaker.
-Student wrote sentences:
+Student wrote sentences for ${filled.length} words:
 ${wordList}
-Return JSON array with ${weekWords.length} objects:
-[{"correct": true/false, "feedback": "comment in Russian", "corrected": "fixed sentence or null"}]
+Return JSON array with ${filled.length} objects:
+[{"word": "english word", "correct": true/false, "feedback": "comment in Russian", "corrected": "fixed sentence or null"}]
 Be encouraging. Mark mostly-correct sentences as correct. Return ONLY the JSON.`;
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -439,15 +454,15 @@ Be encouraging. Mark mostly-correct sentences as correct. Return ONLY the JSON.`
                     onChange={e => setSentences(prev => ({ ...prev, [word.en]: e.target.value }))}
                     placeholder={`Предложение со словом "${word.en}"...`}
                     style={{ width: "100%", border: "none", outline: "none", fontSize: 14, background: "transparent" }} />
-                  {feedback && feedback[i] && (
+                  {feedback && feedback.find(f => f.word === word.en) && (
                     <div style={{ marginTop: 8, padding: "9px 11px", borderRadius: 6,
-                      background: feedback[i].correct ? "#F0FFF4" : "#FFF5F5",
-                      border: `1px solid ${feedback[i].correct ? "#BBF7D0" : "#FECACA"}` }}>
-                      <div style={{ fontWeight: 600, color: feedback[i].correct ? "#16A34A" : "#DC2626", fontSize: 12, marginBottom: 3 }}>
-                        {feedback[i].correct ? "✅ Отлично!" : "❌ Есть ошибка"}
+                      background: feedback.find(f=>f.word===word.en)?.correct ? "#F0FFF4" : "#FFF5F5",
+                      border: `1px solid ${feedback.find(f=>f.word===word.en)?.correct ? "#BBF7D0" : "#FECACA"}` }}>
+                      <div style={{ fontWeight: 600, color: feedback.find(f=>f.word===word.en)?.correct ? "#16A34A" : "#DC2626", fontSize: 12, marginBottom: 3 }}>
+                        {feedback.find(f=>f.word===word.en)?.correct ? "✅ Отлично!" : "❌ Есть ошибка"}
                       </div>
-                      <div style={{ fontSize: 13, color: "#555" }}>{feedback[i].feedback}</div>
-                      {feedback[i].corrected && <div style={{ fontSize: 13, marginTop: 5, fontStyle: "italic" }}>✏️ {feedback[i].corrected}</div>}
+                      <div style={{ fontSize: 13, color: "#555" }}>{feedback.find(f=>f.word===word.en)?.feedback}</div>
+                      {feedback.find(f=>f.word===word.en)?.corrected && <div style={{ fontSize: 13, marginTop: 5, fontStyle: "italic" }}>✏️ {feedback.find(f=>f.word===word.en)?.corrected}</div>}
                     </div>
                   )}
                 </div>
