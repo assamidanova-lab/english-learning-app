@@ -293,12 +293,13 @@ Return JSON array with ${filled.length} objects:
 [{"word": "english word", "correct": true/false, "feedback": "comment in Russian", "corrected": "fixed sentence or null"}]
 Be encouraging. Mark mostly-correct sentences as correct. Return ONLY the JSON.`;
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
+      const res = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
       });
       const data = await res.json();
-      const text = data.content[0].text.trim().replace(/```json|```/g, "");
+      const text = (data.text || "").trim().replace(/```json|```/g, "");
       const results = JSON.parse(text);
       setFeedback(results);
       const correct = results.filter(r => r.correct).length;
