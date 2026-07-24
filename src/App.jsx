@@ -3059,7 +3059,7 @@ export default function App() {
         </div>
         <div style={{ display:"flex", gap:16, alignItems:"center" }}>
           <div style={{ textAlign:"center" }}>
-            <div style={{ fontWeight:700, fontSize:16 }}>{Object.values(state.checkedWords||{}).filter(Boolean).length}</div>
+            <div style={{ fontWeight:700, fontSize:14 }}>{Object.values(state.checkedWords||{}).filter(Boolean).length}/{ALL_ITEMS.length}</div>
             <div style={{ color:"#888", fontSize:10, textTransform:"uppercase" }}>выучено ✅</div>
           </div>
           <div style={{ textAlign:"center" }}>
@@ -3130,7 +3130,7 @@ export default function App() {
                   onChange={() => toggleCheck(state, setState, item.en)}
                   style={{ width:18, height:18, cursor:"pointer", accentColor:"#16A34A", flexShrink:0 }} />
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:15, fontWeight:700, textDecoration: (state.checkedWords||{})[item.en] ? "line-through" : "none", color: (state.checkedWords||{})[item.en] ? "#16A34A" : "#111" }}>{item.en}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color: (state.checkedWords||{})[item.en] ? "#16A34A" : "#111" }}>{item.en}</div>
                   {showTranslation[item.en] && (
                     <div style={{ fontSize:13, color:"#555", marginTop:3 }}>{item.ru}</div>
                   )}
