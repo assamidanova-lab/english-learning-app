@@ -3059,7 +3059,7 @@ export default function App() {
         </div>
         <div style={{ display:"flex", gap:16, alignItems:"center" }}>
           <div style={{ textAlign:"center" }}>
-            <div style={{ fontWeight:700, fontSize:14 }}>{Object.values(state.checkedWords||{}).filter(Boolean).length}/{ALL_ITEMS.length}</div>
+            <div style={{ fontWeight:700, fontSize:16 }}>{Object.values(state.checkedWords||{}).filter(Boolean).length}</div>
             <div style={{ color:"#888", fontSize:10, textTransform:"uppercase" }}>выучено ✅</div>
           </div>
           <div style={{ textAlign:"center" }}>
