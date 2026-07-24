@@ -2914,6 +2914,7 @@ function getInitialState() {
     learnedCount: 0,
     reviewQueue: [],
     failedWords: [],
+    checkedWords: {},
   };
 }
 
@@ -2924,6 +2925,12 @@ function speak(word) {
     u.lang = 'en-US'; u.rate = 0.85;
     window.speechSynthesis.speak(u);
   }
+}
+
+function toggleCheck(state, setState, en) {
+  const checked = { ...(state.checkedWords || {}) };
+  checked[en] = !checked[en];
+  setState(prev => ({ ...prev, checkedWords: checked }));
 }
 
 function getCurrentWords(state) {
@@ -2993,7 +3000,8 @@ export default function App() {
   const currentWords = getCurrentWords(state);
   const reviewDue = (state.reviewQueue || []).filter(item => Date.now() - item.addedAt >= REVIEW_DAYS * 24 * 60 * 60 * 1000);
   const daysLeft = Math.max(0, Math.ceil((state.batchStartedAt + 3*24*60*60*1000 - Date.now()) / (24*60*60*1000)));
-  const progress = Math.round((state.learnedCount / ALL_ITEMS.length) * 100);
+  const checkedCount = Object.values(state.checkedWords||{}).filter(Boolean).length;
+  const progress = Math.round((checkedCount / ALL_ITEMS.length) * 100);
 
   function nextBatch() {
     const newQueue = [...(state.reviewQueue || [])];
@@ -3051,8 +3059,8 @@ export default function App() {
         </div>
         <div style={{ display:"flex", gap:16, alignItems:"center" }}>
           <div style={{ textAlign:"center" }}>
-            <div style={{ fontWeight:700, fontSize:16 }}>{state.learnedCount}</div>
-            <div style={{ color:"#888", fontSize:10, textTransform:"uppercase" }}>изучено</div>
+            <div style={{ fontWeight:700, fontSize:16 }}>{Object.values(state.checkedWords||{}).filter(Boolean).length}</div>
+            <div style={{ color:"#888", fontSize:10, textTransform:"uppercase" }}>выучено ✅</div>
           </div>
           <div style={{ textAlign:"center" }}>
             <div style={{ fontWeight:700, fontSize:16 }}>{progress}%</div>
@@ -3095,6 +3103,9 @@ export default function App() {
             <div style={{ background:"#fff", border:"1px solid #E5E5E5", borderRadius:8, padding:"12px 16px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <div>
                 <div style={{ fontWeight:600, fontSize:14 }}>Набор {state.currentBatch + 1} · {currentWords.length} слов</div>
+                <div style={{ fontSize:12, color:"#16A34A", marginTop:2 }}>
+                  ✅ Отмечено: {Object.values(state.checkedWords||{}).filter(Boolean).length} из {Object.keys(state.checkedWords||{}).length > 0 ? Object.keys(state.checkedWords||{}).length : currentWords.length}
+                </div>
                 <div style={{ fontSize:12, color:"#888", marginTop:2 }}>
                   Слова {state.currentBatch * BATCH_SIZE + 1}–{Math.min((state.currentBatch + 1) * BATCH_SIZE, ALL_ITEMS.length)} из {ALL_ITEMS.length}
                   {(state.failedWords||[]).length > 0 && <span style={{ color:"#DC2626", marginLeft:8 }}>+ {state.failedWords.length} повтор</span>}
@@ -3113,11 +3124,13 @@ export default function App() {
 
             {/* Words */}
             {currentWords.map((item, i) => (
-              <div key={item.en} style={{ marginBottom:8, background:"#fff", border:"1px solid #E5E5E5", borderRadius:8, padding:"12px 14px", display:"flex", alignItems:"center", gap:10,
-                borderLeft: (state.failedWords||[]).find(f=>f.en===item.en) ? "3px solid #DC2626" : "1px solid #E5E5E5" }}>
-                <span style={{ fontSize:12, color:"#bbb", width:22, flexShrink:0 }}>{i+1}</span>
+              <div key={item.en} style={{ marginBottom:8, background: (state.checkedWords||{})[item.en] ? "#F0FFF4" : "#fff", border: (state.checkedWords||{})[item.en] ? "1px solid #BBF7D0" : "1px solid #E5E5E5", borderRadius:8, padding:"12px 14px", display:"flex", alignItems:"center", gap:10,
+                borderLeft: (state.failedWords||[]).find(f=>f.en===item.en) ? "3px solid #DC2626" : (state.checkedWords||{})[item.en] ? "3px solid #16A34A" : "1px solid #E5E5E5" }}>
+                <input type="checkbox" checked={!!(state.checkedWords||{})[item.en]}
+                  onChange={() => toggleCheck(state, setState, item.en)}
+                  style={{ width:18, height:18, cursor:"pointer", accentColor:"#16A34A", flexShrink:0 }} />
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:15, fontWeight:700 }}>{item.en}</div>
+                  <div style={{ fontSize:15, fontWeight:700, textDecoration: (state.checkedWords||{})[item.en] ? "line-through" : "none", color: (state.checkedWords||{})[item.en] ? "#16A34A" : "#111" }}>{item.en}</div>
                   {showTranslation[item.en] && (
                     <div style={{ fontSize:13, color:"#555", marginTop:3 }}>{item.ru}</div>
                   )}
@@ -3207,12 +3220,13 @@ export default function App() {
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
               {[
-                { label:"Изучено слов", value:state.learnedCount },
+                { label:"Выучено слов ✅", value:checkedCount },
                 { label:"Наборов пройдено", value:state.currentBatch },
                 { label:"Прогресс", value:`${progress}%` },
                 { label:"На повторении", value:(state.reviewQueue||[]).length },
                 { label:"Невыученных", value:(state.failedWords||[]).length },
-                { label:"Осталось слов", value:ALL_ITEMS.length - state.learnedCount },
+                { label:"Осталось слов", value:ALL_ITEMS.length - checkedCount },
+
               ].map(stat => (
                 <div key={stat.label} style={{ background:"#fff", border:"1px solid #E5E5E5", borderRadius:8, padding:"16px" }}>
                   <div style={{ fontSize:24, fontWeight:900, letterSpacing:"-0.02em" }}>{stat.value}</div>
@@ -3226,7 +3240,7 @@ export default function App() {
               <div style={{ height:8, background:"#F0F0F0", borderRadius:4, overflow:"hidden" }}>
                 <div style={{ height:"100%", background:"#111", width:`${progress}%`, borderRadius:4 }} />
               </div>
-              <div style={{ fontSize:12, color:"#888", marginTop:6 }}>{state.learnedCount} из {ALL_ITEMS.length} слов и фраз</div>
+              <div style={{ fontSize:12, color:"#888", marginTop:6 }}>{checkedCount} из {ALL_ITEMS.length} слов и фраз</div>
             </div>
 
             <div style={{ background:"#FFF8E6", border:"1px solid #FFE099", borderRadius:8, padding:14, marginBottom:12 }}>
